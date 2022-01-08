@@ -1,14 +1,16 @@
 '''
-crawler.py
+arxiv_scraper.py
 
 This application acts as a web crawler and scraper.
 Starting with https://export.arxiv.org/, the crawler will first extract the links to all the 'new' pages on the website. After completing this, 
 the crawler will visit each page in turn and scrape all paper metadata.
+Once finished, each page's content is output in a JSON file in the /output directory.
 '''
 
 from bs4 import BeautifulSoup
 import logging
 import requests
+import json
 
 
 # Crawl the main page to get the links to all 'new' pages, then return as a list to the main scraper
@@ -22,7 +24,6 @@ def get_seed_urls():
     for link in links:
         if 'new' in link:
             crawl_list.append('https://export.arxiv.org{}'.format(link['href']))
-
     return crawl_list
 
 
@@ -37,6 +38,7 @@ def get_arxiv_data(urls):
         topics = soup.find_all("div", class_='list-subjects') # Paper Subjects
         abstracts = soup.find_all("p", class_='mathjax') # Paper Abstracts
         paper_urls = soup.find_all("a", title='Download PDF') # Paper URL suffix (http://arxiv.org/)
+        papers = []
 
 
         for title, author_list, topic_list, paper_url, abstract in zip(titles, authors, topics, paper_urls, abstracts):
@@ -44,8 +46,8 @@ def get_arxiv_data(urls):
             title = str(title).split('>')[3].split('<')[0].strip()
             paper_url = str(paper_url).split('"')[1].strip()
             abstract = str(abstract).split('>')[1].split('<')[0].strip()
-            author_list = format_arxiv_authors_list(author_list)
-            topic_list = format_arxiv_topics_list(topic_list)
+            author_list = format_authors_list(author_list)
+            topic_list = format_topics_list(topic_list)
 
             # Add the item to the list
             new_paper = {
@@ -55,11 +57,18 @@ def get_arxiv_data(urls):
                 'topics': topic_list,
                 'url': "http://arxiv.org{}".format(paper_url),
             }
-            logging.info('Found paper "{}" from {}.'.format(title, paper_url))
+            papers.append(new_paper)
+            logging.info('Found paper "{}" from {}'.format(title, paper_url))
+        # Write the JSON file to disk
+        topic = url.split('/')[4]
+        f_name = 'output/arxiv_{}.json'.format(topic)
+        with open(f_name, 'w') as f:
+            json.dump(papers, f)
+            logging.info('Wrote metadata to JSON -> {}'.format(f_name))
 
 
 # Get the author's names from the HTML and format it into a single list of strings
-def format_arxiv_authors_list(author_list):
+def format_authors_list(author_list):
     author_list_new = []
     text = str(author_list).split('>')
     for item in text:
@@ -70,7 +79,7 @@ def format_arxiv_authors_list(author_list):
 
 
 # Get the topics from the HTML and format it into a single string list
-def format_arxiv_topics_list(topic_list):
+def format_topics_list(topic_list):
     topic_list_new = []
     text = str(topic_list).strip().split('<span class="primary-subject">')[1].replace('\n', "").split('</div>')[0].split(';')
     if len(text) == 1:
