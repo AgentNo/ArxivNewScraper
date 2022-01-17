@@ -83,7 +83,8 @@ def format_topics_list(topic_list):
     topic_list_new = []
     text = str(topic_list).strip().split('<span class="primary-subject">')[1].replace('\n', "").split('</div>')[0].split(';')
     if len(text) == 1:
-        topic_list_new.append(text[0].split('<')[0])
+        # This remove the arXiv abbreviation from the end of the topic (e.g. cs-cv)
+        topic_list_new.append(text[0].split('<')[0].split('(')[0].strip())
     else:
         for topic in text:
             if topic[-7:] == '</span>':
