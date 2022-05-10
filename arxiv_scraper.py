@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 import logging
 import requests
 import json
+import datetime
+import os
 
 
 # Crawl the main page to get the links to all 'new' pages, then return as a list to the main scraper
@@ -61,10 +63,11 @@ def get_arxiv_data(urls):
             logging.info('Found paper "{}" from {}'.format(title, paper_url))
         # Write the JSON file to disk
         topic = url.split('/')[4]
-        f_name = 'output/arxiv_{}.json'.format(topic)
+        date = datetime.date.today()
+        f_name = 'output/arxiv_{}_{}.json'.format(topic, date)
         with open(f_name, 'w') as f:
             json.dump(papers, f)
-            logging.info('Wrote metadata to JSON -> {}'.format(f_name))
+            logging.info('Wrote metadata to JSON file -> {}'.format(f_name))
 
 
 # Get the author's names from the HTML and format it into a single list of strings
@@ -108,8 +111,10 @@ def start_logs():
 # Main crawler logic
 def main():
     logger = start_logs()
+    if not os.path.exists('./output'):
+        os.mkdir('./output')
+    # Fetch seed urls and start the crawl
     seeds = get_seed_urls()
-    # Intitalise the cosmos connection
     logger.info("Found {} seed URLs\nStarting crawl...".format(len(seeds)))
     get_arxiv_data(seeds)
     logger.info("Arxiv crawl complete!")
